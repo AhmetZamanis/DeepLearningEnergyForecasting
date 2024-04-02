@@ -52,20 +52,37 @@ Besides these modifications, the model is essentially a multi-layer LSTM block, 
 
 I tuned model hyperparameters with Optuna, and the best performing tune is fairly simple, with only 1 LSTM layer, a hidden size of 8 equal to the input size, and only 7 training epochs to get the best model iteration. A small amount of dropout and exponential learning rate scheduling was also used.
 ### Linear inverted transformer model
-The second model I used is a Transformer model [[4]](#4), which is best known for its use in language tasks, but with some modifications for time series forecasting. 
+The second model I used is a Transformer model [[4]](#4), which is best known for its use in language tasks. I made some modifications for time series forecasting. 
 - The transformer architecture consists of an encoder & decoder block, which run in parallel.
 - Typically, a "source" sequence that represents the input is fed to the encoder, and a "target" sequence that represents the desired output is fed to the decoder.
 - Transformers utilize the self-attention mechanism [[5]](#5) to process all sequence steps in one network pass, instead of handling them sequentially like recurrent architectures.
 - A key benefit is computational efficiency. The data handling & model logic is also simpler, with the ability to generate multi-step predictions in one go, without the need for hidden states from previous time steps.
 
-Many architectures that aim to adapt the Transformer model to time series forecasting exist. Out of these, a key inspiration for my implementation is the Inverted Transformer [[6]](#6).
-- In the default Transformer, The sequences of shape (timesteps, features) are projected into a fixed size across the features dimension, yielding (timesteps, dimensions). Then, attention is applied to each feature value at a given timestep.
+Many architectures that aim to adapt the Transformer model to time series forecasting exist. Out of these, a key inspiration for my implementation is the recently published Inverted Transformer [[6]](#6).
+- In a default Transformer, The sequences of shape (timesteps, features) are projected into a fixed size across the features dimension, yielding (timesteps, dimensions). Then, attention is applied to each feature value at a given timestep.
 - The iTransformer inverts the sequences into shape (features, timesteps), and projects them into a fixed size across the timesteps dimension. This way, attention is applied to each timestep value for a given feature.
 - The authors suggest this is more suitable to learn relationships across different timesteps, which intuitively made sense to me. Therefore, the model I implemented also inverts the source & target sequences before passing them to the network.
 
 Unlike the iTransformer, which is an encoder-only model, my model employs a typical encoder-decoder Transformer.
-- From what I understand, the iTransformer, or at least its first version, only takes in the past values & covariates as a "source" sequence, and does not natively support future covariate values for the forecast horizon.
-- I instead opted to use both a source & target sequence, attended by the encoder & decoder respectively, as the seasonal future covariates are likely to be critical for forecasting this highly seasonal time series.
+- From what I understand, the iTransformer, or at least its first version, only takes in the past values & covariates as a "source" sequence. It does not natively support future covariate values for the forecast horizon.
+- I instead opted to use both a source & target sequence, attended by the encoder & decoder separately, as the seasonal future covariates are likely to be critical for forecasting this highly seasonal time series.
+
+Another nuance is how to initialize values for the target variable in the target sequence, if at all.
+- One option is to initialize the first target value as the last past value, and autoregressively expand the target sequence, similar to the LSTM approach above.
+  - With this approach, causal masking is necessary to ensure attention is only applied to past timesteps for a given timestep.
+  - The HuggingFace Time Series Transformer [[7]](#7) seems to implement this approach.
+- Another option seems to be simply not representing the target variable in the target sequence.
+  - iTransformer seems to use this approach, if I understand correctly. So does the Temporal Fusion Transformer (TFT) [[8]](#8) model, though it supports all types of covariates including future known covariates like the time features in this data.
+
+I wanted a simple method to initialize reasonable target variable values for the target sequence, without needing masking or having to autoregressively collect & use predictions. To this end, I implemented a simple linear extrapolation method in my Transformer model.
+- Essentially, the target variable values in the source sequence are used to linearly extrapolate "initial" target values for the target sequence.
+  - The extrapolation is done by performing linear regression in the matrix form with batched data. It is demonstrated in more detail in the relevant notebook in this repository.
+- In the end, the source sequence consists of past target & covariate values, and the target sequence consists of a future linear trend component & future covariate values. If a more complex prediction is not warranted, the simple linear extrapolation is available as a starting point.
+  - There is no causal masking applied, as the linear extrapolations can always be calculated at the forecast time.
+- Besides the linear extrapolation, one of the future covariates in the model is still a trend dummy that starts from the first timestep in the data. I believe using both together is similar to using a piecewise linear trend, taking into account both the (very) long term trend, and the more short-term, "local" trend.
+- Keep in mind this method may not be appropriate if the source sequence is too short. With 72 timesteps, I believe a linear extrapolation can be reasonably robust, but with much shorter sequences, it may be useless.
+- The inspiration for this method was the Autoformer [[9]](#9) architecture, which essentially employs moving averages in the model architecture to perform trend-cycle decompositions.
+
 ### Performance comparison
 ### Sources & acknowledgements
 <a id="1">[1]<a/> The data was sourced by myself, from the EPİAŞ Transparency Platform , which provides open-access data on Türkiye's energy market. The website & API are available in English, though access to the API requires an access application to be made using a static IP address. [Website link](https://seffaflik.epias.com.tr/home)
@@ -84,3 +101,12 @@ Unlike the iTransformer, which is an encoder-only model, my model employs a typi
 \
 \
 <a id="6">[6]<a/> Y. Liu, T. Hu, H. Zhang, H. Wu, S. Wang, L. Ma, M. Long, iTransformer: Inverted Transformers Are Effective for Time Series Forecasting, (2024) [arXiv:2310.06625](https://arxiv.org/abs/2310.06625)
+\
+\
+<a id="7">[7]<a/> See the HuggingFace documentation for details on the Time Series Transformer, implemented by [Kashif Rasul](https://huggingface.co/kashif). [Documentation link](https://huggingface.co/docs/transformers/model_doc/time_series_transformer)
+\
+\
+<a id="8">[8]<a/> B. Lim, S. O. Arık, N. Loeff, T. Pfister, Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting, (2019) [arXiv:1912.09363](https://arxiv.org/abs/1912.09363)
+\
+\
+<a id="9">[9]<a/> H. Wu, J. Xu, J. Wang, M. Long, Autoformer: Decomposition Transformers with Auto-Correlation for Long-Term Series Forecasting, (2022) [arXiv:2106.13008](https://arxiv.org/abs/2106.13008)
