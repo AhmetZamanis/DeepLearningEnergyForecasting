@@ -5,7 +5,7 @@ I used PyTorch and Lightning to build and benchmark an LSTM-based and a Transfor
 \
 This report will go over the problem formulation, the architectures of the models built, and their performance comparisons. We'll also talk about some architectures that inspired this experiment. The code & implementation details can be found in Jupyter notebooks in this repository. The Torch classes are also available in Python scripts, but keep in mind they are restrictive in terms of the types of covariates they support.
 ### Data overview
-The data [[1]](#) consists of hourly, country-wide energy consumption values in Türkiye. The date range spans across five years, from January 1, 2018 to December 31, 2023. 
+The data [[1]](#1) consists of hourly, country-wide energy consumption values in Türkiye. The date range spans across five years, from January 1, 2018 to December 31, 2023. 
 \
 \
 I added some time covariates: A trend dummy, and cyclical encoded covariates based on the hour, weekday and the month. These were used alongside the past consumption values as features in the models. All variables including the target values were scaled from -1 to 1, leaving the cyclical covariates unchanged.
@@ -31,7 +31,7 @@ The first model I used is a recurrent architecture, based on one or multiple lon
 One nuance with this architecture is the initialization of hidden & cell states.
 - Typically, the hidden & cell state values for the first timestep in each training batch are initialized as zeroes.
 - This approach results in a **stateless LSTM**: The hidden & cell state is essentially reset with every batch, and we rely only on the model parameters to capture temporal dependencies. Memory is not retained across batches.
-- In contrast, the **stateful LSTM** approach uses the last hidden & cell states for observation N in batch 1 as the initial hidden & cell states for observation N in batch 2. Memory is retained across batches [[2]](#).
+- In contrast, the **stateful LSTM** approach uses the last hidden & cell states for observation N in batch 1 as the initial hidden & cell states for observation N in batch 2. Memory is retained across batches [[2]](#2).
 
 The stateless architecture is easier to implement, and it is likely sufficient for many problems, but I implemented a stateful architecture out of curiosity.
 - The model I implemented retains the last hidden & cell states from the previous training batch & passes them on to the next training batch.
@@ -46,7 +46,7 @@ Another nuance is that the model actually forecasts one timestep in one network 
 - During validation & inference, we use the prediction from the previous step to extend the input sequence into the next timestep.
   - Essentially, we are making predictions based on predictions after the first target timestep, so errors will stack.
 
-Besides these modifications, the model is essentially a multi-layer LSTM block, similar to DeepAR [[3]](#).
+Besides these modifications, the model is essentially a multi-layer LSTM block, similar to DeepAR [[3]](#3).
 - Unlike DeepAR, I opted to use a quantile loss function to generate quantile forecast intervals, from a linear output layer with one output per forecasted quantile.
 - By default, I forecasted the 2.5th, 50th and 97.5th quantiles, essentially a median forecast surrounded by a 95% interval.
 
@@ -60,4 +60,4 @@ I tuned model hyperparameters with Optuna, and the best performing tune is fairl
 <a id="2">[2]<a/> A useful article with visualizations that helped me better understand how the stateful LSTM propagates states across batches. [Article link](https://towardsai.net/p/l/stateless-vs-stateful-lstms)
 \
 \
-<a id="2">[3]<a/> D. Salinas, V. Flunkert, J. Gasthaus, DeepAR: Probabilistic Forecasting with Autoregressive Recurrent Networks, (2019) [arXiv:1704.04110](https://arxiv.org/abs/1704.04110)
+<a id="3">[3]<a/> D. Salinas, V. Flunkert, J. Gasthaus, DeepAR: Probabilistic Forecasting with Autoregressive Recurrent Networks, (2019) [arXiv:1704.04110](https://arxiv.org/abs/1704.04110)
