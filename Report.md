@@ -52,6 +52,20 @@ Besides these modifications, the model is essentially a multi-layer LSTM block, 
 
 I tuned model hyperparameters with Optuna, and the best performing tune is fairly simple, with only 1 LSTM layer, a hidden size of 8 equal to the input size, and only 7 training epochs to get the best model iteration. A small amount of dropout and exponential learning rate scheduling was also used.
 ### Linear inverted transformer model
+The second model I used is a Transformer model [[4]](#4), which is best known for its use in language tasks, but with some modifications for time series forecasting. 
+- The transformer architecture consists of an encoder & decoder block, which run in parallel.
+- Typically, a "source" sequence that represents the input is fed to the encoder, and a "target" sequence that represents the desired output is fed to the decoder.
+- Transformers utilize the self-attention mechanism [[5]](#5) to process all sequence steps in one network pass, instead of handling them sequentially like recurrent architectures.
+- A key benefit is computational efficiency. The data handling & model logic is also simpler, with the ability to generate multi-step predictions in one go, without the need for hidden states from previous time steps.
+
+Many architectures that aim to adapt the Transformer model to time series forecasting exist. Out of these, a key inspiration for my implementation is the Inverted Transformer [[6]](#6).
+- In the default Transformer, The sequences of shape (timesteps, features) are projected into a fixed size across the features dimension, yielding (timesteps, dimensions). Then, attention is applied to each feature value at a given timestep.
+- The iTransformer inverts the sequences into shape (features, timesteps), and projects them into a fixed size across the timesteps dimension. This way, attention is applied to each timestep value for a given feature.
+- The authors suggest this is more suitable to learn relationships across different timesteps, which intuitively made sense to me. Therefore, the model I implemented also inverts the source & target sequences before passing them to the network.
+
+Unlike the iTransformer, which is an encoder-only model, my model employs a typical encoder-decoder Transformer.
+- From what I understand, the iTransformer, or at least its first version, only takes in the past values & covariates as a "source" sequence, and does not natively support future covariate values for the forecast horizon.
+- I instead opted to use both a source & target sequence, attended by the encoder & decoder respectively, as the seasonal future covariates are likely to be critical for forecasting this highly seasonal time series.
 ### Performance comparison
 ### Sources & acknowledgements
 <a id="1">[1]<a/> The data was sourced by myself, from the EPİAŞ Transparency Platform , which provides open-access data on Türkiye's energy market. The website & API are available in English, though access to the API requires an access application to be made using a static IP address. [Website link](https://seffaflik.epias.com.tr/home)
@@ -61,3 +75,12 @@ I tuned model hyperparameters with Optuna, and the best performing tune is fairl
 \
 \
 <a id="3">[3]<a/> D. Salinas, V. Flunkert, J. Gasthaus, DeepAR: Probabilistic Forecasting with Autoregressive Recurrent Networks, (2019) [arXiv:1704.04110](https://arxiv.org/abs/1704.04110)
+\
+\
+<a id="4">[4]<a/> A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, L. Kaiser, I. Polosukhin, Attention Is All You Need, (2023) [arXiv:1706.03762](https://arxiv.org/abs/1706.03762)
+\
+\
+<a id="5">[5]<a/> Another excellent article that describes & illustrates the self-attention & cross-attention mechanism very well. [Article link](https://sebastianraschka.com/blog/2023/self-attention-from-scratch.html)
+\
+\
+<a id="6">[6]<a/> Y. Liu, T. Hu, H. Zhang, H. Wu, S. Wang, L. Ma, M. Long, iTransformer: Inverted Transformers Are Effective for Time Series Forecasting, (2024) [arXiv:2310.06625](https://arxiv.org/abs/2310.06625)
