@@ -95,7 +95,46 @@ Another small modification is a residual connection that connects the inverted &
 
 Besides all this, the output layer has the size (timesteps * quantiles), generating multiple quantile predictions for each timestep in the forecast horizon in one go. The loss function & calculation is the same as the LSTM model above.
 
+As with the LSTM model, the Transformer hyperparameters were also tuned with Optuna. The best tune is again on the simpler side:
+- One encoder & decoder block yielded the best performance, with two heads in the multi-attention blocks.
+- Both the attention & feed forward network dimensions were set to 32, matching the target sequence length, while downsizing the source sequence from 72.
+  - Remember, the sequences are inverted & the timesteps are projected to the attention dimension, unlike the default Transformer.
+- A small amount of dropout, and exponential learning rate scheduling were again used. The best tune trained for 48 epochs, considerably longer than the best LSTM.
+
 ### Performance comparison
+For both models, the data was split into source & target sequences of 72 and 32 hours respectively. 
+- Each source sequence ends with 16:00, and each target sequence represents the next 8 + 24 hours of comsumption values to be predicted.
+- Then, the pairs of source & target sequences (2186 in total) were split into training, validation & testing sets of roughly 60%, 20% and 20% respectively.
+- Both models were tuned with the train - validation split. Then, performance testing was performed on the testing set, with the best model hyperparameters, by training on the recombined train & validation sets.
+- See notebooks 3.1 and 3.2 for more details on the data handling steps performed before & after testing.
+
+Let's start by comparing the predicted vs. actual values plots for both models over the entire testing set.
+
+<img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/LSTMpreds.png" width="500"/> <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/TrafoPreds.png" width="500"/> 
+
+This is a crowded plot, as we have a long, hourly time series. But it still shows how well the model predictions were able to fit the actual values overall.
+- Keep in mind the testing set is also split into source & target sequences. For each pair, the models output a prediction only for the target sequence. Hence the gap between actual & predicted values at the start, which is more clearly understood in the plots below.
+- From the overall plots, we see the Transformer model generally outputs a wider forecast interval that better contains the actual values. In contrast, the lower bounds of the LSTM forecast interval are often too high.
+- Also, the LSTM model is unable to fully capture a cyclical period in the data, while the Transformer does so very well.
+
+\
+Next, let's zoom into a few source & target sequence pairs along the testing data, compared with the predictions. Of course, we can't do this manually for every pair.
+
+<img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/LSTMpreds1.png" width="500"/> <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/TrafoPreds1.png" width="500"/>
+<img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/LSTMpreds2.png" width="500"/> <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/TrafoPreds2.png" width="500"/> 
+
+We see both models generally do a decent job of predicting the process mean.
+- The LSTM predictions are "smoother" compared to the Transformer predictions, which often capture even the hourly fluctuations very well.
+- Again, the Transformer prediction intervals are wider & do a better job overall of containing the actual values.
+
+\
+Finally, let's look at some performance metrics, for both the point & quantile forecasts.
+<img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/LSTMmetrics.png" width="500"/> <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/TrafoMetrics.png" width="500"/> 
+
+Again, both models perform well, but the Transformer performs considerably better, beating the LSTM in all metrics, point or quantile. Keep in mind that pinball loss at the 50th quantile is essentially half of the MAE.
+- Besides the predictive performance, I'd say the Transformer was better in any comparison I can think of during this experiment: It was computationally much more efficient, the model code & logic, data handling & formatting of sequences were all more straightforward compared to the LSTM.
+- Of course, the best method depends on the problem & data at hand. The LSTM & recurrent architectures still offer the ability to process the data in a strictly sequential manner, which is leveraged along with the attention mechanism in the TFT architecture.
+
 ### Sources & acknowledgements
 <a id="1">[1]<a/> The data was sourced by myself, from the EPİAŞ Transparency Platform , which provides open-access data on Türkiye's energy market. The website & API are available in English, though access to the API requires an access application to be made using a static IP address. [Website link](https://seffaflik.epias.com.tr/home)
 \
@@ -122,3 +161,12 @@ Besides all this, the output layer has the size (timesteps * quantiles), generat
 \
 \
 <a id="9">[9]<a/> H. Wu, J. Xu, J. Wang, M. Long, Autoformer: Decomposition Transformers with Auto-Correlation for Long-Term Series Forecasting, (2022) [arXiv:2106.13008](https://arxiv.org/abs/2106.13008)
+\
+\
+Dive into Deep Learning ([d2l.ai](https://d2l.ai/)) is a very comprehensive book that has been my main source for many aspects of deep learning. The book explains recurrent & transformer architectures using language modeling examples.
+\
+\
+[Darts by unit8co](https://unit8co.github.io/darts/index.html) is my go-to Python package for time series forecasting & anomaly detection tasks. It offers Torch & Lightning implementations of many deep learning forecasting models, including a vanilla Transformer & the TFT architecture, both of which I referenced extensively while implementing my own.
+\
+\
+[PyTorch Forecasting](https://pytorch-forecasting.readthedocs.io/en/stable/) is a package that offers deep learning time series forecasting capabilities using Torch models. I referenced their TFT & quantile loss implementations during this experiment.
