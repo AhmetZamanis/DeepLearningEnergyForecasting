@@ -137,6 +137,8 @@ Again, both models perform well, but the Transformer performs considerably bette
 
 ### Sources & acknowledgements
 <a id="1">[1]<a/> The data was sourced by myself, from the EPİAŞ Transparency Platform , which provides open-access data on Türkiye's energy market. The website & API are available in English, though access to the API requires an access application to be made using a static IP address. [Website link](https://seffaflik.epias.com.tr/home)
+
+I have also made the reformatted data available on Kaggle. [Kaggle dataset link](https://www.kaggle.com/datasets/ahmetzamanis/energy-consumption-and-pricing-trkiye-2018-2023/data)
 \
 \
 <a id="2">[2]<a/> A useful article with visualizations that helped me better understand how the stateful LSTM propagates states across batches. [Article link](https://towardsai.net/p/l/stateless-vs-stateful-lstms)
