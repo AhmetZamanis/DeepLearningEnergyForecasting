@@ -1,6 +1,6 @@
 ## Introduction
 This report summarizes my experience experimenting with some deep learning forecasting models, on a time series dataset of hourly energy consumption values.
-I used PyTorch and Lightning to build and benchmark an LSTM-based and a Transformer-based forecasting model. The goal was to familiarize and experiment with these architectures, and better understand some variants developed for time series forecasting.
+I used PyTorch and Lightning to build and benchmark two multi-horizon forecasting models: An LSTM-based model, and a Transformer-based model. The goal was to familiarize and experiment with these architectures, and better understand some variants developed for time series forecasting.
 \
 \
 This report will go over the problem formulation, the architectures of the models built, and their performance comparisons. We'll also talk about some architectures that inspired this experiment. The code & implementation details can be found in Jupyter notebooks in this repository. The Torch classes are also available in Python scripts, but keep in mind the implementations are tailored to this problem & dataset.
@@ -60,22 +60,22 @@ The second model I used is a Transformer architecture [[4]](#4), which is best k
 - Transformers utilize the self-attention mechanism [[5]](#5) to process all sequence steps in one network pass, instead of handling them sequentially like recurrent architectures.
 - A key benefit is computational efficiency. The data handling & model logic is also simpler, with the ability to generate multi-step predictions in one go, without the need for hidden states from previous time steps.
 
-Many architectures that aim to adapt the Transformer model to time series forecasting exist. Out of these, a key inspiration for my implementation is the recently published Inverted Transformer [[6]](#6).
+Many architectures that aim to adapt the Transformer model to time series forecasting exist. Out of these, a key inspiration for my implementation is the recently published iTransformer (Inverted Transformer) [[6]](#6).
 - In a default Transformer, The sequences of shape (timesteps, features) are projected to a fixed size across the features dimension, yielding (timesteps, dimensions). Then, attention is applied to each feature value at a given timestep.
 - The iTransformer inverts the sequences into shape (features, timesteps), and projects them to a fixed size across the timesteps dimension. This way, attention is applied to each timestep value for a given feature.
 - The authors suggest this is more suitable to learn relationships across timesteps, which intuitively made sense to me. Therefore, the model I implemented also inverts the source & target sequences before passing them to the network.
-- Transformers often apply positional encodings to the input sequences to capture the ordering of sequence steps, as they are not processed sequentially. The iTransformer does not apply positional encodings: The authors state the feed-forward networks applied to inverted inputs inherently capture the sequence orderings.
+- Transformers often apply positional encodings to the input sequences to capture the ordering of sequence steps, as they are not processed sequentially. The iTransformer does not apply positional encodings: The authors state the feed-forward networks applied to inverted inputs inherently capture the sequence orderings. Positional encodings were also omitted from my model.
 
 Unlike the iTransformer, which is an encoder-only model, the Transformer model in this repository employs a typical encoder-decoder Transformer.
 - From what I understand, the iTransformer, or at least its first version, only takes in the past values & covariates as a "source" sequence. It does not natively support future covariate values for the forecast horizon.
   - There could be a workaround that I am not aware of.
 - I instead opted to use both a source & target sequence, attended by the encoder & decoder separately, as the seasonal future covariates are likely to be critical for forecasting this highly seasonal time series.
 - This architecture should natively support source & target sequences with different numbers of features, so any number of past & future covariates can be used, though in this experiment the source & target sequences represent the same features across different sequence lengths.
-  - I haven't considered how static covariates could be supported, since the time series in question is univariate. A simple but likely inefficient method is likely concatenating them to the sequences over the feature dimension, with a fixed value across all timesteps.
+  - I haven't considered how static covariates could be supported, since the time series in question is univariate. A simple but likely inefficient method is concatenating them to the sequences over the feature dimension, with a fixed value across all timesteps.
 
 Another nuance is how to initialize values for the target variable in the target sequence, if at all.
-- One option is to initialize the first target value as the last past value, and autoregressively expand the target sequence, similar to the LSTM approach above.
-  - With this approach, causal masking is necessary to ensure attention is only applied to past timesteps for a given timestep.
+- One option is to use teacher forcing during training. Then, at inference, we can initialize the first target value as the last past value, and autoregressively expand the target sequence with model predictions, similar to the LSTM approach above.
+  - With this approach, causal masking in the decoder is necessary, to ensure attention is only applied to past target timesteps for each target timestep.
   - The HuggingFace Time Series Transformer [[7]](#7) seems to implement this approach.
 - Another option seems to be simply omitting the target variable representation in the target sequence.
   - iTransformer seems to use this approach, if I understand correctly. So does the Temporal Fusion Transformer (TFT) architecture [[8]](#8), though it supports all types of covariates, including future known covariates like the time features in this data.
@@ -84,13 +84,13 @@ I wanted a simple method to initialize reasonable target variable values for the
 - Essentially, the target variable values in the source sequence are used to extrapolate "initial" target values for the target sequence.
   - The extrapolation is done by performing linear regression in the matrix form with batched data, using the sequence indices (0 to 72 + 32) as the predictor. It is demonstrated in more detail in the [relevant notebook](https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/MISC_TorchLinearExtrapolation.ipynb) in this repository.
 - This way, the source sequence consists of past target & covariate values, and the target sequence consists of a future linear trend component & future covariate values.
-  - There is no causal masking applied, as the linear extrapolation for all timesteps can always be calculated at the forecast time.
+  - There is no causal masking applied, as the linear extrapolation for all target timesteps are calculated & known at the forecast time.
 - Besides the linear extrapolation, one of the future covariates in the model is still a trend dummy that starts from the first timestep in the data. I believe using both together is similar to using a piecewise trend, taking into account both the (very) long term trend, and the more short-term, "local" trend.
   - Keep in mind this method may not be appropriate if the source sequence is too short. With 72 timesteps, I believe a linear extrapolation can be reasonably robust, but with much shorter sequences, it may be useless.
-  - One could also experiment with using the time series indices, rather than the sequence indices, to perform the linear extrapolation over longer sequences. It could be inefficient to do this within the model though.
+  - One could also experiment with using the time series indices, rather than the sequence indices, to perform the linear extrapolation over longer sequences. It could be inefficient to do this within the Torch model though.
 - The inspiration for this method was the Autoformer architecture [[9]](#9), which essentially employs moving averages in the model architecture to perform trend-cycle decompositions.
 
-Another small modification is a residual connection that connects the inverted & projected target sequence with the decoder output, essentially skipping the attention mechanisms to get to the output layer. This should enable the model to use the simple linear extrapolation as predictions, if a more complex prediction is not warranted.
+Another small modification is a residual connection that connects the inverted & projected target sequence (the decoder input) with the decoder output, essentially skipping the attention mechanisms to get to the output layer. This should enable the model to use the simple linear extrapolation as predictions, if a more complex prediction is not warranted.
 - The inspiration for this modification is the TFT architecture [[8]](#8), which employs a residual connection that can skip over the entire attention mechanism.
 
 Besides all this, the output layer has the size (timesteps * quantiles), generating multiple quantile predictions for each timestep in the forecast horizon in one go. The loss function & calculation is the same as the LSTM model above.
@@ -115,7 +115,7 @@ Let's start by comparing the predicted vs. actual values plots for both models o
 This is a crowded plot, as we have a long, hourly time series. But it still shows how well the model predictions were able to fit the actual values overall.
 - Keep in mind the testing set is also split into source & target sequences. For each pair, the models output a prediction only for the target sequence. Hence the gap between actual & predicted values at the start, which is more clearly understood in the plots below.
 - From the overall plots, we see the Transformer model generally outputs a wider forecast interval that better contains the actual values. In contrast, the lower bounds of the LSTM forecast interval are often too high.
-- Also, the LSTM model is unable to fully capture a cyclical period in the data, while the Transformer does so very well.
+- Also, the LSTM model is unable to fully capture the spike observed during summer, while the Transformer does so very well.
 
 \
 Next, let's zoom into a few source & target sequence pairs along the testing data, compared with the predictions. Of course, we can't do this manually for every pair.
@@ -124,7 +124,7 @@ Next, let's zoom into a few source & target sequence pairs along the testing dat
 <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/LSTMpreds2.png" width="500"/> <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/TrafoPreds2.png" width="500"/> 
 
 We see both models generally do a decent job of predicting the process mean.
-- The LSTM predictions are "smoother" compared to the Transformer predictions, which often capture even the hourly fluctuations very well.
+- The LSTM predictions are "smoother" compared to the Transformer predictions, which often capture even the hourly fluctuations very well. Although in some cases, the fluctuations in the Transformer predictions do not seem meaningful.
 - Again, the Transformer prediction intervals are wider & do a better job overall of containing the actual values.
 
 \
@@ -132,8 +132,8 @@ Finally, let's look at some performance metrics, for both the point & quantile f
 <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/LSTMmetrics.png" width="500"/> <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/TrafoMetrics.png" width="500"/> 
 
 Again, both models perform well, but the Transformer performs considerably better, beating the LSTM in all metrics, point or quantile. Keep in mind that pinball loss at the 50th quantile is essentially half of the MAE.
-- Besides the predictive performance, I'd say the Transformer was better in any comparison I can think of during this experiment: It was computationally much more efficient, the model code & logic, data handling & formatting of sequences were all more straightforward compared to the LSTM.
-- Of course, the best method depends on the problem & data at hand. The LSTM & recurrent architectures still offer the ability to process the data in a strictly sequential manner, which is leveraged along with the attention mechanism in the TFT architecture.
+- Besides the predictive performance, I'd say the Transformer was better in any comparison I can think of during this experiment: It was computationally much more efficient. The model logic, and the data handling & sequencing steps were all more straightforward compared to the LSTM.
+- Of course, the best method depends on the problem & data at hand. The LSTM & recurrent architectures still offer the ability to process the data in a strictly sequential manner. For example, this ability is leveraged in the TFT architecture to learn short-term temporal dependencies, while long-term ones are left to the attention mechanism.
 
 ### Sources & acknowledgements
 <a id="1">[1]<a/> The data was sourced by myself, from the EPİAŞ Transparency Platform , which provides open-access data on Türkiye's energy market. The website & API are available in English, though access to the API requires an access application to be made using a static IP address. [Website link](https://seffaflik.epias.com.tr/home)
