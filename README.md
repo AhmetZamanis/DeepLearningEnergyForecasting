@@ -4,4 +4,6 @@ I used PyTorch Lightning to implement a stateful LSTM model, and an inverted Tra
 
 See the [Markdown report](https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/Report.md) for an explanation of the models & results, along with sources & acknowledgements.
 
+I also used this dataset and the GPyTorch package to try out Gaussian Process Regression with various training strategies. See the [notebook](https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/4.0_GaussianProcess.ipynb) for details. 
+
 The dataset is available on [Kaggle](https://www.kaggle.com/datasets/ahmetzamanis/energy-consumption-and-pricing-trkiye-2018-2023).
