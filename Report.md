@@ -14,6 +14,9 @@ I added some time covariates: A trend dummy, and cyclical encoded covariates bas
 \
 \
 As expected, the energy consumption displays strong seasonality, mainly hourly, but also by weekday and possibly monthly seasonality. There is also a slight linear increase trend across the data span, and some potential cyclicality. For more detail, see the data processing, EDA & feature engineering notebooks.
+\
+\
+I also experimented with using multiple Fourier terms chosen according to the strongest seasonality frequencies in the consumption time series, instead of cyclical encoding seasonal features. The mathematics behind the two approaches is fairly similar, and so were the results. See the relevant [branch](https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/tree/add-fourier-feature) for that version of the feature engineering & testing notebooks.
 
 ### Problem formulation
 I based my problem formulation on the operations of the EPİAŞ energy market in Türkiye. 
@@ -55,7 +58,7 @@ Besides these modifications, the model is essentially a multi-layer LSTM block, 
 - The training loss is calculated by averaging over the quantiles, summing over the timesteps, and averaging over the batches.
   - There is room for experimentation here: For example, if particular timesteps' forecasts are more important, we could take the weighted average of losses over timesteps and put more weight on more important timesteps, instead of summing them all up and treating them equally.
 
-I tuned model hyperparameters with Optuna, and the best performing tune is fairly simple, with only 1 LSTM layer, a hidden size of 8 equal to the input size, and only 7 training epochs to get the best model iteration. A small amount of dropout was also used, along with exponential learning rate scheduling.
+I tuned model hyperparameters with Optuna, and the best performing tunes are fairly simple, usually with only 1 LSTM layer, a hidden size of 8 equal to the input size, and around 10 training epochs to get the best model iteration. A small amount of dropout was also used, along with exponential learning rate scheduling.
 
 ### Linear inverted transformer model
 The second model I used is a **Transformer architecture** [[4]](#4), which is best known for its use in language tasks. I made some modifications for time series forecasting. 
@@ -103,18 +106,19 @@ See below for a diagram of the Linear Inverted Transformer model (best viewed in
 
 ![Architecture](https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/TransformerDiagram.png)
 
-As with the LSTM model, the Transformer hyperparameters were also tuned with Optuna. The best tune is again on the simpler side:
-- One encoder & decoder block yielded the best performance, with two heads in the multi-attention blocks.
-- Both the attention & feed forward network dimensions were set to 32, matching the target sequence length, while downsizing the source sequence from 72.
+As with the LSTM model, the Transformer hyperparameters were also tuned with Optuna. The best tunes are again on the simpler side:
+- One encoder & decoder block often yielded the best performance, usually with eight heads in the multi-attention blocks.
+- The attention & feed forward network dimensions were often set to 16 and 8 respectively, downsizing the source & target sequences considerably from 72 and 32.
   - Remember, the sequences are inverted & the timesteps are projected to the attention dimension, unlike the default Transformer.
-- A small amount of dropout, and exponential learning rate scheduling were again used. The best tune trained for 48 epochs, considerably longer than the best LSTM.
+- A small amount of dropout and exponential learning rate scheduling were again used. The best tunes often trained for around 30-40 epochs, considerably longer than the best LSTM.
+- These parameter combinations (and the predictions below) suggest that the Transformer is able to learn more out of the sequences compared to the LSTM, and the attention mechanism does the heavy lifting.
 
 ### Performance comparison
 For both models, the data was split into source & target sequences of 72 and 32 hours respectively. 
 - Each source sequence ends with 16:00, and each target sequence represents the next 8 + 24 hours of comsumption values to be predicted.
 - Then, the pairs of source & target sequences (2186 in total) were split into training, validation & testing sets of roughly 60%, 20% and 20% respectively.
 - Both models were tuned with the train - validation split. Then, performance testing was performed on the testing set, with the best model hyperparameters, by training on the recombined train & validation sets.
-- See notebooks 3.1 and 3.2 for more details on the data handling steps performed before & after testing.
+- See notebooks 3.1 and 3.2 for more details on the data handling steps performed before & after testing. Keep in mind the results, plots & metrics in the notebooks may be slightly different from this report, as I experiment further & perform more hyperparameter tuning.
 
 Let's start by comparing the predicted vs. actual values plots for both models over the entire testing set.
 
