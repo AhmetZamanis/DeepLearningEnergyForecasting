@@ -4,9 +4,60 @@ import numpy as np
 import torch
 
 
+def get_transformer_sequences(df, input_seq_length = 72, output_seq_length = 32, num_features = 8, horizon_start = 0, forecast_t = 16):
+    """
+    Takes in the consumption training dataset.
+    Returns it as a pair of lists: Input & output sequences, each sequence a dataframe.
+    """
+
+    # Get shifted dataset, drop last row due to unknown target
+    df_shifted = df.copy()
+    df_shifted["consumption_MWh"] = df_shifted.consumption_MWh.shift(-1)
+    df_shifted = df_shifted.dropna()
+    n_steps = len(df_shifted) 
+
+    # Find the index of the first row in the data at hour T, where the index is bigger than source_length - 1. This will be the first T.
+    first_t = df_shifted.loc[(df_shifted.time.dt.hour == forecast_t) & (df_shifted.index >= input_seq_length - 1)].index.values[0]
+
+    # Find the index of the last row in the data at hour T, with `output_seq_length` time steps after it. This will be the last T.
+    last_t = df_shifted.loc[(df_shifted.time.dt.hour == forecast_t) & (df_shifted.index + output_seq_length - 1 <= df.index.values[-1])].index.values[-2]
+
+    # Number of T rows followed by a sufficient length input & output sequence
+    n_sequences = (last_t - first_t) // 24 + 1 
+
+    # Initialize lists of sequences
+    input_sequences = []
+    output_sequences = []
+    
+    # Get sequences
+    for t in range(first_t, last_t + 1, 24):
+
+        # Get input sequence
+        new_input = pd.concat([
+            df_shifted.iloc[(t - input_seq_length):t, 0], # Time
+            df_shifted.iloc[(t - input_seq_length):t, 2], # Past target
+            df_shifted.iloc[(t - input_seq_length):t, 3:] # Past covariates
+            ], axis = 1)
+        new_input = new_input.set_index("time")
+    
+        # Get output sequence
+        new_output = pd.concat([
+            df_shifted.iloc[t:(t + output_seq_length), 0], # Time 
+            df_shifted.iloc[t:(t + output_seq_length), 1], # Future target
+            df_shifted.iloc[t:(t + output_seq_length), 3:] # Future known covariates
+            ], axis = 1)
+        new_output = new_output.set_index("time")
+    
+        # Concatenate to arrays of sequences
+        input_sequences.append(new_input)
+        output_sequences.append(new_output)
+
+    return input_sequences, output_sequences
+
+
 class SequenceScaler:
     """
-    Takes in lists of dataframes, where each dataframe is an input or output sequence.
+    Takes in 1 pair of lists: Input & output sequences, each sequence a dataframe.
 
     Returns scaled 3D numpy array of shape (observations, timesteps, features).
     Can also backtransform scaled predictions.

@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import lightning as L
 
@@ -13,9 +14,9 @@ class StatefulQuantileLSTM(L.LightningModule):
 
     # Initialize model
     def __init__(self, hyperparams_dict):
-    """
-    hyperparams_dict: Dictionary of hyperparameter values. See below for required hyperparameters.
-    """
+        """
+        hyperparams_dict: Dictionary of hyperparameter values. See below for required hyperparameters.
+        """
         
          # Delegate function to parent class
         super().__init__() 
