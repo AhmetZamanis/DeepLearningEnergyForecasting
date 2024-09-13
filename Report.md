@@ -3,7 +3,7 @@ This report summarizes my experience experimenting with some deep learning forec
 I used PyTorch and Lightning to build and benchmark two multi-horizon forecasting models: An LSTM-based model, and a Transformer-based model. The goal was to familiarize and experiment with these architectures, and better understand some variants developed for time series forecasting.
 \
 \
-This report will go over the problem formulation, the architectures of the models built, and their performance comparisons. We'll also talk about some architectures that inspired this experiment. The code & implementation details can be found in Jupyter notebooks in this repository. The Torch classes are also available in Python scripts, but keep in mind the implementations are tailored to this problem & dataset.
+This report will go over the problem formulation, the architectures of the models built, and their performance comparisons. We'll also talk about some architectures that inspired this experiment. The code & implementation details can be found in the Jupyter notebooks in `analysis`, and the scripts in `src`. The Torch classes are available in `src`, but keep in mind the implementations are tailored to this problem & dataset.
 
 ### Data overview
 The data [[1]](#1) consists of hourly, country-wide energy consumption values in Türkiye. The date range spans across five years, from January 1, 2018 to December 31, 2023. 
@@ -89,7 +89,7 @@ Another nuance is how to initialize values for the target variable in the target
 
 I wanted a simple method to initialize reasonable target variable values for the target sequence, without needing masking or having to autoregressively collect & use predictions. To this end, I implemented a simple **linear extrapolation** method in my Transformer model.
 - Essentially, the target variable values in the source sequence are used to extrapolate "initial" target values for the target sequence.
-  - The extrapolation is done by performing linear regression in the matrix form with batched data, using the sequence indices (0 to 72 + 32) as the predictor. It is demonstrated in more detail in the [relevant notebook](https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/MISC_TorchLinearExtrapolation.ipynb) in this repository.
+  - The extrapolation is done by performing linear regression in the matrix form with batched data, using the sequence indices (0 to 72 + 32) as the predictor. It is demonstrated in more detail in the relevant notebook in this repository.
 - This way, the source sequence consists of past target & covariate values, and the target sequence consists of a future linear trend component & future covariate values.
   - There is no causal masking applied, as the linear extrapolation for all target timesteps are calculated & known at the forecast time.
 - Besides the linear extrapolation, one of the future covariates in the model is still a trend dummy that starts from the first timestep in the data. I believe using both together is similar to using a **piecewise trend**, taking into account both the (very) long term trend, and the more short-term, "local" trend.
@@ -118,16 +118,16 @@ For both models, the data was split into source & target sequences of 72 and 32 
 - Each source sequence ends with 16:00, and each target sequence represents the next 8 + 24 hours of comsumption values to be predicted.
 - Then, the pairs of source & target sequences (2186 in total) were split into training, validation & testing sets of roughly 60%, 20% and 20% respectively.
 - Both models were tuned with the train - validation split. Then, performance testing was performed on the testing set, with the best model hyperparameters, by training on the recombined train & validation sets.
-- See notebooks 3.1 and 3.2 for more details on the data handling steps performed before & after testing. Keep in mind the results, plots & metrics in the notebooks may be slightly different from this report, as I experiment further & perform more hyperparameter tuning.
+- See the notebooks for more details on the data handling steps performed before & after testing. Keep in mind the results, plots & metrics in the notebooks may be a bit different from this report, as I experiment further & perform more hyperparameter tuning.
 
 Let's start by comparing the predicted vs. actual values plots for both models over the entire testing set.
 
 <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/LSTMpreds.png" width="500"/> <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/TrafoPreds.png" width="500"/> 
 
-This is a crowded plot, as we have a long, hourly time series. But it still shows how well the model predictions were able to fit the actual values overall.
+This is a crowded plot, as we have a long, hourly time series. But it still shows how well the model predictions were able to follow the time series level overall.
 - Keep in mind the testing set is also split into source & target sequences. For each pair, the models output a prediction only for the target sequence. Hence the gap between actual & predicted values at the start, which is more clearly understood in the plots below.
 - From the overall plots, we see the Transformer model generally outputs a wider forecast interval that better contains the actual values. In contrast, the lower bounds of the LSTM forecast interval are often too high.
-- Also, the LSTM model is unable to fully capture the spike observed during summer, while the Transformer does so very well.
+- Also, the LSTM model is unable to fully capture the elevated consumption level observed during summer, while the Transformer does so very well.
 
 \
 Next, let's zoom into a few source & target sequence pairs along the testing data, compared with the predictions. Of course, we can't do this manually for every pair.
@@ -150,7 +150,7 @@ Again, both models perform well, but the Transformer performs considerably bette
 ### Sources & acknowledgements
 <a id="1">[1]<a/> The data was sourced by myself, from the **EPİAŞ Transparency Platform**, which provides open-access data on Türkiye's energy market. The website & API are available in English, though access to the API requires an access application to be made using a static IP address. [Website link](https://seffaflik.epias.com.tr/home)
 
-I have also made the reformatted data available on Kaggle. [Kaggle dataset link](https://www.kaggle.com/datasets/ahmetzamanis/energy-consumption-and-pricing-trkiye-2018-2023/data)
+The reformatted & merged data is available on Kaggle. [Kaggle dataset link](https://www.kaggle.com/datasets/ahmetzamanis/energy-consumption-and-pricing-trkiye-2018-2023/data)
 \
 \
 <a id="2">[2]<a/> A useful article with visualizations that helped me better understand how the stateful LSTM propagates states across batches. [Article link](https://towardsai.net/p/l/stateless-vs-stateful-lstms)
