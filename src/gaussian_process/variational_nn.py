@@ -1,3 +1,4 @@
+import torch
 import gpytorch
 from gpytorch.kernels import ScaleKernel, LinearKernel, PeriodicKernel, AdditiveKernel
 from gpytorch.priors import NormalPrior

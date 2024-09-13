@@ -1,4 +1,5 @@
 # The ExactGP classes are the most "complete" ones, the others could be updated similar to them
+import torch
 import gpytorch
 from gpytorch.kernels import ScaleKernel, LinearKernel, PeriodicKernel, AdditiveKernel
 from gpytorch.priors import NormalPrior
