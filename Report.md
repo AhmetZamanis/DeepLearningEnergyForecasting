@@ -10,7 +10,7 @@ The data [[1]](#1) consists of hourly, country-wide energy consumption values in
 \
 \
 I added some time covariates: A trend dummy, and cyclical encoded covariates based on the hour, weekday and the month. These were used alongside the past consumption values as features in the models. All variables including the target values were scaled from -1 to 1, leaving the cyclical covariates unchanged.
-![Data](https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/DataHead.png)
+![Data](https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/report-images/DataHead.png)
 \
 \
 As expected, the energy consumption displays strong seasonality, mainly hourly, but also by weekday and possibly monthly seasonality. There is also a slight linear increase trend across the data span, and some potential cyclicality. For more detail, see the data processing, EDA & feature engineering notebooks.
@@ -104,7 +104,7 @@ Besides all this, the output layer has the size (timesteps * quantiles), generat
 
 See below for a diagram of the Linear Inverted Transformer model (best viewed in a new tab).
 
-![Architecture](https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/TransformerDiagram.png)
+![Architecture](https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/report-images/TransformerDiagram.png)
 
 As with the LSTM model, the Transformer hyperparameters were also tuned with Optuna. The best tunes are again on the simpler side:
 - One encoder & decoder block often yielded the best performance, usually with eight heads in the multi-attention blocks.
@@ -122,7 +122,7 @@ For both models, the data was split into source & target sequences of 72 and 32 
 
 Let's start by comparing the predicted vs. actual values plots for both models over the entire testing set.
 
-<img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/LSTMpreds.png" width="500"/> <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/TrafoPreds.png" width="500"/> 
+<img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/report-images/LSTMpreds.png" width="500"/> <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/report-images/TrafoPreds.png" width="500"/> 
 
 This is a crowded plot, as we have a long, hourly time series. But it still shows how well the model predictions were able to follow the time series level overall.
 - Keep in mind the testing set is also split into source & target sequences. For each pair, the models output a prediction only for the target sequence. Hence the gap between actual & predicted values at the start, which is more clearly understood in the plots below.
@@ -132,8 +132,8 @@ This is a crowded plot, as we have a long, hourly time series. But it still show
 \
 Next, let's zoom into a few source & target sequence pairs along the testing data, compared with the predictions. Of course, we can't do this manually for every pair.
 
-<img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/LSTMpreds1.png" width="500"/> <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/TrafoPreds1.png" width="500"/>
-<img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/LSTMpreds2.png" width="500"/> <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/TrafoPreds2.png" width="500"/> 
+<img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/report-images/LSTMpreds1.png" width="500"/> <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/report-images/TrafoPreds1.png" width="500"/>
+<img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/report-images/LSTMpreds2.png" width="500"/> <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/report-images/TrafoPreds2.png" width="500"/> 
 
 We see both models generally do a decent job of predicting the process mean.
 - The LSTM predictions are smoother compared to the Transformer predictions, which often capture even the hourly fluctuations very well. Although in some cases, the fluctuations in the Transformer predictions do not seem meaningful.
@@ -141,7 +141,7 @@ We see both models generally do a decent job of predicting the process mean.
 
 \
 Finally, let's look at some performance metrics, for both the point & quantile forecasts.
-<img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/LSTMmetrics.png" width="500"/> <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/ReportImages/TrafoMetrics.png" width="500"/> 
+<img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/report-images/LSTMmetrics.png" width="500"/> <img src="https://github.com/AhmetZamanis/DeepLearningEnergyForecasting/blob/main/report-images/TrafoMetrics.png" width="500"/> 
 
 Again, both models perform well, but the Transformer performs considerably better, beating the LSTM in all metrics, point or quantile. Keep in mind that pinball loss at the 50th quantile is essentially half of the MAE.
 - Besides the predictive performance, I'd say the Transformer was better in any comparison I can think of during this experiment: It was computationally much more efficient. The model logic, and the data handling & sequencing steps were all more straightforward compared to the LSTM.
