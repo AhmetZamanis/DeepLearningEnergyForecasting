@@ -1,6 +1,22 @@
-# Data
-data/*
-!data/.gitkeep
+# Analysis data
+data/analysis/raw/*
+data/analysis/processed/*
+data/analysis/tuning-logs/*
+
+!data/analysis/raw/.gitkeep
+!data/analysis/processed/.gitkeep
+!data/analysis/tuning-logs/.gitkeep
+
+# Deployment data
+data/deployment/raw/*
+data/deployment/processed/*
+data/deployment/tuning-logs/*
+data/deployment/predictions/*
+
+!data/deployment/raw/.gitkeep
+!data/deployment/processed/.gitkeep
+!data/deployment/tuning-logs/.gitkeep
+!data/deployment/predictions/.gitkeep
 
 # Lightning logs
 /lightning_logs

@@ -29,36 +29,6 @@ def train_val_split(input_sequences, output_sequences, train_fraction = 0.8, bat
     return train_input_sequences, train_output_sequences, val_input_sequences, val_output_sequences
     
 
-# def train_val_test_split(input_sequences, output_sequences, train_fraction = 0.6, val_fraction = 0.2, batch_size = 64):
-#     """
-#     Takes in 1 pair of lists: Input & output sequences, each sequence a dataframe.
-#     Returns 3 pairs of lists: Input & output sequences, split into training, validation & testing sets.
-#     """
-
-#     # Get the index of the last training sequence, get training set
-#     train_end = int(len(input_sequences) * train_fraction)
-#     train_input_sequences, train_output_sequences = input_sequences[0:train_end], output_sequences[0:train_end]
-
-#     # Trim the start of the training set so batch size is constant
-#     train_remainder = len(train_input_sequences) % batch_size
-#     train_input_sequences, train_output_sequences = train_input_sequences[train_remainder:], train_output_sequences[train_remainder:]
-
-#     # Get validation set
-#     val_end = train_end + int(len(input_sequences) * val_fraction)
-#     val_input_sequences, val_output_sequences = input_sequences[train_end:val_end], output_sequences[train_end:val_end]
-#     val_remainder = len(val_input_sequences) % batch_size
-#     val_input_sequences, val_output_sequences = val_input_sequences[:-val_remainder], val_output_sequences[:-val_remainder]
-
-#     # Get testing set
-#     test_input_sequences, test_output_sequences = input_sequences[val_end:], output_sequences[val_end:]
-#     test_remainder = len(test_input_sequences) % batch_size
-#     test_input_sequences, test_output_sequences = test_input_sequences[:-test_remainder], test_output_sequences[:-test_remainder]
-
-#     ### Have to split training data @ validation and training data @ testing step separately, to avoid losing sequences for the latter
-#     ### Do it with one function: First train-test split, then split train into train-val.
-
-#     return train_input_sequences, val_input_sequences, test_input_sequences, train_output_sequences, val_output_sequences, test_output_sequences
-
 def test_sequences_to_dataframe(test_input_seq, test_output_seq):
     """
     Takes in 1 pair of lists: Input & output sequences for the testing set.
