@@ -21,6 +21,9 @@ data/deployment/predictions/*
 # Lightning logs
 /lightning_logs
 
+# Hydra logs
+/hydra_outputs
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
