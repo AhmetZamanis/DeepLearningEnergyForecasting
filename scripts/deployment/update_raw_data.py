@@ -16,11 +16,9 @@ def update_raw_data(cfg: DictConfig) -> None:
 
     print("Getting consumption data configs...")
     years_of_data = cfg.data.years_of_data
-    consumption_lag = cfg.data.consumption_lag
     timeout = cfg.data.timeout
 
     print(f"Years of data: {years_of_data}")
-    print(f"Consumption data delay: {consumption_lag} hours")
     print(f"Timeout between data requests: {timeout} seconds")
 
     print("Getting directories...")
@@ -37,7 +35,7 @@ def update_raw_data(cfg: DictConfig) -> None:
     tgt = get_tgt(epias_username, epias_password)
 
     print("Requesting consumption data...")
-    df = get_consumption_data(tgt, years_of_data, consumption_lag, timeout)
+    df = get_consumption_data(tgt, years_of_data, timeout)
 
     print("Writing raw consumption data to: /data/deployment/raw")
     df.to_csv(filepath, index = False)

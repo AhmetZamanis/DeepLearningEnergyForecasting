@@ -1,21 +1,18 @@
-# Configs for data extraction
+# Configs for data extraction & feature engineering
 data:
-    years_of_data: 1
-    consumption_lag: 2
+    years_of_data: 5
     timeout: 5
-
-# Configs for model training
+    consumption_lag: 2
+    
+# Configs for model training & tuning
 training:
     source_length: 72
     target_length: 31
     horizon_start: 0
     quantiles: [0.025, 0.5, 0.975]
-
-# Configs for model tuning
-tuning:
     val_size: 0.2
 
 # Hydra configs
 hydra:
   run:
-    dir: /hydra_outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: hydra_outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}

@@ -8,10 +8,9 @@ from dateutil.relativedelta import relativedelta
 from typing import Union
 
 
-def _get_request_dates(years_of_data: int, consumption_lag: int = 2) -> tuple[list, str]:
+def _get_request_dates(years_of_data: int) -> tuple[list, str]:
     """
-    Returns the start & end dates for a consumption data request, according to the delay in realtime 
-    consumption data.
+    Returns the start & end dates for a consumption data request.
         
     Returns 1 start date per requested years of data, 
     because the API returns 1 years of data at a time.
@@ -19,12 +18,8 @@ def _get_request_dates(years_of_data: int, consumption_lag: int = 2) -> tuple[li
     Returned dates are in ISO format with timezone, without microseconds: 'YYYY-MM-DDTHH:mm:ss+03:00'
     """
 
-    # Current date, with timezone, without microseconds
-    current_date = datetime.datetime.now().astimezone().replace(microsecond = 0)
-
-    # End date as (current date - (consumption_lag + 1))
-    # +1 because if request end date is 14:15, API returns 15:00 as last datapoint, instead of 14:00.
-    end_date = current_date - datetime.timedelta(hours = (consumption_lag + 1))
+    # Current date as end date, with timezone, without microseconds
+    end_date = datetime.datetime.now().astimezone().replace(microsecond = 0)
 
     # Loop to get start dates
     start_dates = []
@@ -133,10 +128,15 @@ def get_tgt(username: str, password: str) -> str:
     raise Exception(f"TGT request failed. Status code: {status_code}")
 
 
-def get_consumption_data(tgt:str, years_of_data: int, consumption_lag: int = 2, timeout: Union[int, float] = 5) -> pd.DataFrame:
+def get_consumption_data(tgt:str, years_of_data: int, timeout: Union[int, float] = 5) -> pd.DataFrame:
     """
-    Takes a TGT, the number of years of data requested, and the delay of the realtime consumption data (consumption_lag).
-    Requests & returns daily consumption dataframe with 1 or more years of data, ending with (current_date - consumption_lag).
+    Takes a TGT & the number of years of data requested.
+    Requests & returns daily consumption dataframe with 1 or more years of data. 
+
+    Realtime consumption data is available with up to 2 hours of delay:
+    If the request is made within hour T, before ~T:40, the last datapoint in the response is usually T-2.
+    If the request is made roughly at or after ~T:40, the last datapoint in the response is usually T-1.
+    Either way, the consumption value is complete.
 
     The API returns 1 year of data per request, so the function makes multiple requests if necessary. 
     `timeout` controls wait time between requests, in seconds.
@@ -150,18 +150,11 @@ def get_consumption_data(tgt:str, years_of_data: int, consumption_lag: int = 2, 
     if (years_of_data < 1):
         raise ValueError("Ensure 'years_of_data > 0'")
 
-    if (consumption_lag < 0):
-        raise ValueError("Ensure 'consumption_lag >= 0'")
-
     if (timeout < 0):
         raise ValueError("Ensure 'timeout >= 0'")
 
-    # No need to wait when requesting 1 year of data
-    if years_of_data < 2:
-        timeout = 0
-
     # Get start & end dates
-    start_dates, end_date = _get_request_dates(years_of_data, consumption_lag)
+    start_dates, end_date = _get_request_dates(years_of_data)
 
     # Loop to get dataframes for each year
     df_list = []
@@ -181,10 +174,15 @@ def get_consumption_data(tgt:str, years_of_data: int, consumption_lag: int = 2, 
         end_date = start_dates[counter]
         counter += 1
 
-        # Wait
-        time.sleep(timeout)
+        # Wait, unless it's the final request
+        if counter < (years_of_data - 1):
+            time.sleep(timeout)
 
     # Concatenate dataframes, drop duplicates
     df = pd.concat(df_list).drop_duplicates()
-    
+
+    # Sort by date
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.sort_values("date")
+
     return df
