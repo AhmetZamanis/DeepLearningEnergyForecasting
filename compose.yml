@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  energy-forecaster:
+    build:
+      context: .
+    image: energy-forecaster:v0.0.1
+
+      # Bind mount data & model folders to project root folders
+    volumes:
+      - ./data/deployment:/app/data/deployment
+      - ./models/deployment:/app/models/deployment
+      - ./scripts/deployment/configs:/app/scripts/deployment/configs
+    
+    # Keep container running after "docker compose up", unless stopped
+    command: tail -f /dev/null

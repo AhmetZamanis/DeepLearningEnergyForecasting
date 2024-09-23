@@ -1,6 +1,6 @@
 # Configs for data extraction & feature engineering
 data:
-    years_of_data: 5
+    years_of_data: 1
     timeout: 5
     consumption_lag: 2
     

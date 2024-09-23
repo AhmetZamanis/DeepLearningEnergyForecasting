@@ -1,0 +1,9 @@
+# ** ignores the pattern in any subdirectory
+# Files in bind mounts are not ignored.
+
+**.ipynb_checkpoints
+**__pycache__
+**.gitkeep
+src/gaussian_process
+src/eda
+src/utils.py

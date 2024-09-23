@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 from pathlib import Path
 from omegaconf import DictConfig, OmegaConf
 from src.data_extraction.api import get_tgt, get_consumption_data
-from src.utils import get_root_dir
 
 
 print("Starting raw consumption data update script...")
@@ -22,8 +21,8 @@ def update_raw_data(cfg: DictConfig) -> None:
     print(f"Timeout between data requests: {timeout} seconds")
 
     print("Getting directories...")
-    root_dir = get_root_dir()
-    data_dir = root_dir / "data" / "deployment" / "raw"
+    work_dir = Path.cwd()
+    data_dir = work_dir / "data" / "deployment" / "raw"
     filepath = data_dir / "consumption.csv"
 
     print("Getting credentials from .env ...")
