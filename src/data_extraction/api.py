@@ -179,10 +179,12 @@ def get_consumption_data(tgt:str, years_of_data: int, timeout: Union[int, float]
             time.sleep(timeout)
 
     # Concatenate dataframes, drop duplicates
-    df = pd.concat(df_list).drop_duplicates()
+    df = pd.concat(df_list).drop_duplicates(subset = ["date"], keep = "last", ignore_index = True)
 
-    # Sort by date
-    df["date"] = pd.to_datetime(df["date"])
-    df = df.sort_values("date")
+    # Convert date column to datetime
+    # API returns `2023-09-25T00:00:00+03:00`,
+    # pandas converts it to `2023-09-25 00:00:00+03:00`.
+    # If not converted here, duplicates with old data will go unremoved in "update_raw_data.py".
+    df.loc[:, "date"] = pd.to_datetime(df["date"], format = "ISO8601")
 
     return df
