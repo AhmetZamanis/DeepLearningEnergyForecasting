@@ -1,17 +1,26 @@
 # Configs for data extraction & feature engineering
 data:
-    years_of_data: 1
-    timeout: 5
-    consumption_lag: 2
+    years_of_data: 5  # Years of data requested in one API call
+    timeout: 5  # Timeout between 1-year API calls
     
-# Configs for model training & tuning
-training:
-    source_length: 72
-    target_length: 31
-    horizon_start: 0
-    quantiles: [0.025, 0.5, 0.975]
-    val_size: 0.2
+# Configs for Transformer model
+transformer:
+    source_length: 72  # N. timesteps in source sequence
+    target_length: 33  # N. timesteps in target sequence
+    forecast_t: 15  # First forecast hour in model training & tuning 
+    horizon_start: 0  # First forecast step for loss calculation
+    quantiles: [0.025, 0.5, 0.975]  # Forecast quantiles
+    batch_size: 64  # N. of source-target sequence pairs in one training batch
+    num_workers: 0  # N. of dataloader workers, >0 often creates memory problems
 
+# Configs for tuning
+tuning:
+    val_size: 0.2  # Fraction of validation data
+    tolerance: 0.002  # Change in MAE loss to avoid early stopping
+    patience: 5  # N. of rounds with no improvement before early stopping
+    max_epochs: 100  # Max. training epochs for one tuning trial
+    n_trials: 100  # Number of tuning trials
+    
 # Hydra configs
 hydra:
   run:

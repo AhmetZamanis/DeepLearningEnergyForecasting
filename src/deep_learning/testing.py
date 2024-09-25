@@ -7,10 +7,11 @@ import seaborn as sns
 from sklearn.metrics import mean_absolute_error as mae, mean_absolute_percentage_error as mape, root_mean_squared_log_error as rmsle, mean_pinball_loss as pinball
 
 
-def train_val_split(input_sequences, output_sequences, train_fraction = 0.8, batch_size = 64):
+def train_val_split(input_sequences: list, output_sequences: list, train_fraction: float = 0.8, batch_size: int = 64) -> tuple[list, list, list, list]:
     """
     Takes in 1 pair of lists: Input & output sequences, each sequence a dataframe.
     Returns 2 pairs of lists: Input & output sequences, split into training & validation sets.
+    Truncates the training sequence pairs from the start & validation sequence pairs from the end, to avoid remainders from the specified batch size.
     """
 
     # Get the index of the last training sequence, get training set

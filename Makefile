@@ -32,3 +32,7 @@ update_raw_data:
 # Update training data
 update_training_data:
 	docker compose exec $(SERVICE_NAME) python scripts/deployment/update_training_data.py
+
+# Perform Optuna tuning
+tune_model:
+	docker compose exec $(SERVICE_NAME) python scripts/deployment/tune_model.py
