@@ -1,17 +1,15 @@
 import datetime
 import hydra
 import pandas as pd
-import numpy as np
 import torch
 import lightning as L
 import optuna
 import warnings
 
-from lightning.pytorch.callbacks import Callback
 from optuna.integration import PyTorchLightningPruningCallback
-from pathlib import Path
+#from pathlib import Path
 from hydra.core.hydra_config import HydraConfig
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 from src.deep_learning.preprocessing import get_transformer_sequences, SequenceScaler, SequenceDataset
 from src.deep_learning.testing import train_val_split
 from src.deep_learning.transformer import LITransformer
@@ -23,6 +21,17 @@ print("Starting transformer model tuning script...")
 @hydra.main(version_base = None, config_path = "configs", config_name = "config")
 def tune_model(cfg: DictConfig) -> None:
 
+    print("Getting directories...")
+    work_dir = get_root_dir()
+    #work_dir = Path.cwd()
+    data_dir = work_dir / "data" / "deployment"
+    processed_dir = data_dir / "processed" / "training_data.csv"
+    tuning_dir = data_dir / "tuning-logs"
+
+    print("Getting training data...")
+    df = pd.read_csv(processed_dir)
+    df["date"] = pd.to_datetime(df["date"], format = "ISO8601")
+    
     print("Getting transformer model & tuning configs...")
     source_length = cfg.transformer.source_length
     target_length = cfg.transformer.target_length
@@ -36,33 +45,21 @@ def tune_model(cfg: DictConfig) -> None:
     patience = cfg.tuning.patience
     max_epochs = cfg.tuning.max_epochs
     n_trials = cfg.tuning.n_trials
-
-    # Set Torch settings
-    #torch.set_default_dtype(torch.float32)
-    torch.set_float32_matmul_precision('medium')  # MAKE ADJUSTABLE??
-    #L.seed_everything(random_seed, workers = True)
-    warnings.filterwarnings("ignore", ".*does not have many workers.*")
+    progress_bar = cfg.tuning.progress_bar
+    accelerator = cfg.torch.accelerator
+    precision = cfg.torch.precision
+    matmul_precision = cfg.torch.matmul_precision
 
     print("Overridden configs:")
     for key, value in HydraConfig.get().items():
         if key.startswith("overrides"):
             print(f"{key}: {value}")
 
-    print("Getting directories...")
-    work_dir = get_root_dir()
-    #work_dir = Path.cwd()
-    data_dir = work_dir / "data" / "deployment"
-    processed_dir = data_dir / "processed" / "training_data.csv"
-    tuning_dir = data_dir / "tuning-logs"
-
-    print("Getting & sequencing training data...")
-    df = pd.read_csv(processed_dir)
-    df["date"] = pd.to_datetime(df["date"], format = "ISO8601")
+    print("Sequencing training data...")
 
     # Drop last L steps, as potential prediction source sequence
     df = df.iloc[0:-source_length, :]
 
-    # Sequence training data
     source_sequences, target_sequences = get_transformer_sequences(
         df, source_length, target_length, forecast_t
     )
@@ -71,13 +68,6 @@ def tune_model(cfg: DictConfig) -> None:
     train_source, train_target, val_source, val_target = train_val_split(
         source_sequences, target_sequences, (1-val_size), batch_size
     )
-
-    # # TEST: Write last sequences, check if they're good
-    # print(len(train_source))
-    # train_source[-1].to_csv(tuning_dir / "train_source.csv")
-    # train_target[-1].to_csv(tuning_dir / "train_target.csv")
-    # val_source[-1].to_csv(tuning_dir / "val_source.csv")
-    # val_target[-1].to_csv(tuning_dir / "val_target.csv")
 
     print("Performing feature scaling...")
     scaler = SequenceScaler()
@@ -93,7 +83,7 @@ def tune_model(cfg: DictConfig) -> None:
         scaler.transform(val_target),
     )
 
-    print("Creating Torch dataloaders...")
+    # Create Torch dataloaders
     shuffle = False
     train_loader = torch.utils.data.DataLoader(
         train_data, batch_size = batch_size, num_workers = num_workers, shuffle = shuffle
@@ -103,8 +93,11 @@ def tune_model(cfg: DictConfig) -> None:
         val_data, batch_size = batch_size, num_workers = num_workers, shuffle = shuffle
     )
 
-    print("Performing Optuna study...")
+    # Set Torch settings
+    torch.set_float32_matmul_precision(matmul_precision)
+    warnings.filterwarnings("ignore", ".*does not have many workers.*")
 
+    print("Performing Optuna study...")
     # Define Optuna objective
     def objective_transformer(trial):
     
@@ -157,13 +150,10 @@ def tune_model(cfg: DictConfig) -> None:
     
         # Create trainer
         trainer = L.Trainer(
-            max_epochs = max_epochs,
-
-            # MAKE THESE ADJUSTABLE?
-            accelerator = "gpu",  
+            accelerator = accelerator,  
             devices = "auto",
-            precision = "16-mixed",
-            
+            precision = precision,
+            max_epochs = max_epochs,
             callbacks = [callback_earlystop, callback_pruner],
             enable_model_summary = False,
             logger = False,
@@ -193,13 +183,13 @@ def tune_model(cfg: DictConfig) -> None:
     )
 
     # Optimize study
-    study_transformer.optimize(objective_transformer, n_trials = n_trials, show_progress_bar = True)
+    study_transformer.optimize(objective_transformer, n_trials = n_trials, show_progress_bar = progress_bar)
 
     print("Saving tuning logs to: /data/deployment/tuning-logs")
 
-    # Export study
-    current_date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    logname = f"transformer-{current_date}.csv"
+    # Export study with datetime information in filename
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    logname = f"transformer_{current_date}.csv"
     study_dir = tuning_dir / logname
     trials_transformer = study_transformer.trials_dataframe().sort_values("value", ascending = True)
     trials_transformer.to_csv(study_dir, index = False)

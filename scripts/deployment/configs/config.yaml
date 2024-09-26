@@ -1,9 +1,7 @@
-# Configs for data extraction & feature engineering
 data:
     years_of_data: 5  # Years of data requested in one API call
     timeout: 5  # Timeout between 1-year API calls
     
-# Configs for Transformer model
 transformer:
     source_length: 72  # N. timesteps in source sequence
     target_length: 33  # N. timesteps in target sequence
@@ -13,15 +11,23 @@ transformer:
     batch_size: 64  # N. of source-target sequence pairs in one training batch
     num_workers: 0  # N. of dataloader workers, >0 often creates memory problems
 
-# Configs for tuning
 tuning:
     val_size: 0.2  # Fraction of validation data
     tolerance: 0.002  # Change in MAE loss to avoid early stopping
     patience: 5  # N. of rounds with no improvement before early stopping
     max_epochs: 100  # Max. training epochs for one tuning trial
     n_trials: 100  # Number of tuning trials
+    progress_bar: True  # Show Optuna progress bar
+
+training:
+    model_summary: True  # Print Torch model summary
+    progress_bar: True  # Print training progress bar
+
+torch:
+    accelerator: "gpu"  # Change according to your training device
+    precision: "16-mixed"  # Change according to your training device
+    matmul_precision: "medium"  # See `torch.set_float32_matmul_precision`
     
-# Hydra configs
 hydra:
   run:
     dir: hydra_outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}

@@ -68,7 +68,7 @@ class SequenceScaler:
         self.lower = feature_range[0]
         self.upper = feature_range[1]
 
-    def fit(self, input_df: pd.DataFrame, output_df: pd.DataFrame):
+    def fit(self, input_df: list, output_df: list) -> None:
 
         # Get input & output sequences as 3D arrays
         # The time index will be skipped, yielding shape (N, seq_length, seq_dims)
@@ -97,7 +97,7 @@ class SequenceScaler:
         self.dimensions_mini = dimensions_mini
         self.dimensions_maxi = dimensions_maxi
 
-    def transform(self, scale_df: pd.DataFrame) -> np.ndarray:
+    def transform(self, scale_df: list) -> np.ndarray:
 
         # Get sequence as 3D arrays
         scale_array = np.stack(scale_df, axis = 0)

@@ -7,7 +7,7 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Copy files, matching project root structure
-COPY pyproject.toml setup.py .env .
+COPY pyproject.toml setup.py .env ./
 COPY src src
 COPY scripts/deployment scripts/deployment
 

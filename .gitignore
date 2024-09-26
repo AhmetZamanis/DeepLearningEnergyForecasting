@@ -18,6 +18,10 @@ data/deployment/predictions/*
 !data/deployment/tuning-logs/.gitkeep
 !data/deployment/predictions/.gitkeep
 
+# Deployment models
+models/deployment/*
+!models/deployment/transformer/.gitkeep
+
 # Lightning logs
 /lightning_logs
 
