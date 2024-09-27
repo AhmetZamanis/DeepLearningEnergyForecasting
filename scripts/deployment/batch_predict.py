@@ -9,12 +9,12 @@ import warnings
 
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
-#from pathlib import Path
+from pathlib import Path
 from joblib import load
 from src.deep_learning.preprocessing import SequenceDataset
 from src.deep_learning.prediction import predictions_to_dataframe
 from src.deep_learning.transformer import LITransformer
-from src.utils import get_root_dir
+#from src.utils import get_root_dir
 
 
 print("Starting transformer batch prediction script...")
@@ -23,14 +23,17 @@ print("Starting transformer batch prediction script...")
 def batch_predict(cfg: DictConfig) -> None:
 
     print("Getting directories...")
-    work_dir = get_root_dir()
-    #work_dir = Path.cwd()
+    #work_dir = get_root_dir()
+    work_dir = Path.cwd()
     data_dir = work_dir / "data" / "deployment"
-    processed_dir = data_dir / "processed" / "training_data.csv"
     model_dir = work_dir / "models" / "deployment"
     transformer_dir = model_dir / "transformer"
     scaler_dir = model_dir / "scaler"
     preds_dir = data_dir / "predictions"
+
+    processed_filename = data_dir / "processed" / "training_data.csv"
+    if (processed_filename.exists()) == False:
+        raise Exception("Training data not found in data/deployment/processed. Run training data update script.")
 
     print("Getting transformer batch prediction configs...")
     source_length = cfg.transformer.source_length
@@ -50,18 +53,26 @@ def batch_predict(cfg: DictConfig) -> None:
 
     print("Getting last trained transformer model...")
     transformer_pattern = (transformer_dir / "*.ckpt").__str__()
-    transformer_paths = glob.glob(transformer_pattern)  
+    transformer_paths = glob.glob(transformer_pattern)
+
+    if len(transformer_paths) == 0:
+        raise Exception("No trained transformer model found in models/deployment/transformer. Run model training script.")
+
     latest_transformer = sorted(transformer_paths)[-1] 
     model = LITransformer.load_from_checkpoint(latest_transformer)
 
     print("Getting last fitted scaler...")
     scaler_pattern = (scaler_dir / "*.joblib").__str__()
-    scaler_paths = glob.glob(scaler_pattern)  
+    scaler_paths = glob.glob(scaler_pattern)
+
+    if len(scaler_paths) == 0:
+        raise Exception("No fitted scaler found in models/deployment/scaler. Run model training script.")
+
     latest_scaler = sorted(scaler_paths)[-1] 
     scaler = load(latest_scaler)
 
     print("Getting prediction data...")
-    df_source = pd.read_csv(processed_dir)
+    df_source = pd.read_csv(processed_filename)
     df_source["date"] = pd.to_datetime(df_source["date"], format = "ISO8601")
 
     # Get last L steps of training data, source sequence
@@ -86,11 +97,11 @@ def batch_predict(cfg: DictConfig) -> None:
         range((first_trend), (first_trend + target_length), 1)
     )
 
-    hourofday = df_target.date.dt.hour + 1
+    hourofday = df_target.date.dt.hour
     df_target["hour_sin"] = np.sin(2 * np.pi * hourofday / 24)
     df_target["hour_cos"] = np.cos(2 * np.pi * hourofday / 24)
 
-    dayofweek = df_target.date.dt.dayofweek + 1
+    dayofweek = df_target.date.dt.dayofweek
     df_target["day_sin"] = np.sin(2 * np.pi * dayofweek / 7)
     df_target["day_cos"] = np.cos(2 * np.pi * dayofweek / 7)
 
@@ -104,7 +115,7 @@ def batch_predict(cfg: DictConfig) -> None:
     df_source = df_source.set_index("date")
     df_target = df_target.set_index("date")
     
-    # get arrays, put them in lists for SequenceScaler
+    # Get data as arrays, put them in lists for SequenceScaler
     # Get rid of mock "consumption" column in target sequence after scaling
     pred_data = SequenceDataset(
         scaler.transform([df_source.values]),

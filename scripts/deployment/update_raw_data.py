@@ -4,10 +4,10 @@ import os
 
 from dotenv import load_dotenv
 from pathlib import Path
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 from math import ceil
 from src.data_extraction.api import get_tgt, get_consumption_data, _get_request_dates
-from src.utils import get_root_dir
+#from src.utils import get_root_dir
 
 
 print("Starting raw consumption data update script...")
@@ -23,17 +23,17 @@ def update_raw_data(cfg: DictConfig) -> None:
     print(f"Timeout between data requests: {timeout} seconds")
 
     print("Getting directories...")
-    work_dir = get_root_dir()
-    #work_dir = Path.cwd()
+    #work_dir = get_root_dir()
+    work_dir = Path.cwd()
     data_dir = work_dir / "data" / "deployment" / "raw"
-    raw_dir = data_dir / "consumption.csv"
+    raw_filename = data_dir / "consumption.csv"
 
     print("Checking for existing raw data...")
     old_data_exists = False
 
     # Try to load "consumption.csv". Pass if it doesn't exist.
     try:
-        df_old = pd.read_csv(raw_dir)
+        df_old = pd.read_csv(raw_filename)
         df_old.loc[:, "date"] = pd.to_datetime(df_old["date"], format = "ISO8601")
         old_data_exists = True
         
@@ -81,7 +81,7 @@ def update_raw_data(cfg: DictConfig) -> None:
 
     print("Writing raw consumption data to: /data/deployment/raw")
     df = df.sort_values("date")
-    df.to_csv(raw_dir, index = False)
+    df.to_csv(raw_filename, index = False)
 
 if __name__ == "__main__":
     update_raw_data()

@@ -8,11 +8,11 @@ import warnings
 
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
-#from pathlib import Path
+from pathlib import Path
 from joblib import dump
 from src.deep_learning.preprocessing import get_transformer_sequences, SequenceScaler, SequenceDataset
 from src.deep_learning.transformer import LITransformer
-from src.utils import get_root_dir
+#from src.utils import get_root_dir
 
 
 print("Starting transformer model training script...")
@@ -21,25 +21,33 @@ print("Starting transformer model training script...")
 def train_model(cfg: DictConfig) -> None:
 
     print("Getting directories...")
-    work_dir = get_root_dir()
-    #work_dir = Path.cwd()
+    #work_dir = get_root_dir()
+    work_dir = Path.cwd()
     data_dir = work_dir / "data" / "deployment"
-    processed_dir = data_dir / "processed" / "training_data.csv"
-    tuning_dir = data_dir / "tuning-logs"
-    tuning_log_pattern = (tuning_dir / "transformer_*.csv").__str__()  # Convert from Path to str for glob
     model_dir = work_dir / "models" / "deployment"
 
-    print("Getting training data...")
-    df = pd.read_csv(processed_dir)
-    df["date"] = pd.to_datetime(df["date"], format = "ISO8601")
+    processed_filename = data_dir / "processed" / "training_data.csv"
+    if (processed_filename.exists()) == False:
+        raise Exception("Training data not found in data/deployment/processed. Run training data update script.")
+
+    tuning_dir = data_dir / "tuning-logs"
+    tuning_log_pattern = (tuning_dir / "transformer_*.csv").__str__()  # Convert from Path to str for glob
 
     print("Getting transformer model best tune...")
-    # glob takes the str-converted filepath pattern, returns the same format
-    # The returned str filepath is used to load the tune.
-    # Should work on all systems, because the str conversion is made by Path. Right?
-    tuning_logs = glob.glob(tuning_log_pattern)  
-    latest_log = sorted(tuning_logs)[-1]   
+    # glob takes the str-converted filepath pattern, returns filepaths in the same format
+    # The returned str filepath is used to load the tune
+    # Should work on all systems, because the str conversion is made by Path, locally
+    tuning_logs = glob.glob(tuning_log_pattern) 
+
+    if (len(tuning_logs) == 0):
+        raise Exception("No tuning log found in data/deployment/tuning-logs. Run model tuning script.")
+
+    latest_log = sorted(tuning_logs)[-1] 
     best_tune = pd.read_csv(latest_log).query("state == 'COMPLETE'").iloc[0, :]
+
+    print("Getting training data...")
+    df = pd.read_csv(processed_filename)
+    df["date"] = pd.to_datetime(df["date"], format = "ISO8601")
     
     print("Getting transformer model training configs...")
     source_length = cfg.transformer.source_length

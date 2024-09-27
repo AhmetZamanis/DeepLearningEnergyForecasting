@@ -1,5 +1,6 @@
 SERVICE_NAME=energy-forecaster
 
+# DOCKER COMMANDS
 # Build / rebuild a Docker service from the image
 build_image:
 	docker compose build
@@ -25,6 +26,8 @@ remove_image:
 # docker compose exec reuses an existing container, but doesn't rerun it.
 # docker compose run creates a new one each time.
 
+
+# PYTHON SCRIPT COMMANDS
 # Update raw consumption data
 update_raw_data:
 	docker compose exec $(SERVICE_NAME) python scripts/deployment/update_raw_data.py 
@@ -33,6 +36,14 @@ update_raw_data:
 update_training_data:
 	docker compose exec $(SERVICE_NAME) python scripts/deployment/update_training_data.py
 
-# Perform Optuna tuning
+# Perform model tuning with Optuna
 tune_model:
 	docker compose exec $(SERVICE_NAME) python scripts/deployment/tune_model.py
+
+# Train final model with best tune, save model & scaler
+train_model:
+	docker compose exec $(SERVICE_NAME) python scripts/deployment/train_model.py
+
+# Predict the next H timesteps after the training data
+batch_predict:
+	docker compose exec $(SERVICE_NAME) python scripts/deployment/batch_predict.py

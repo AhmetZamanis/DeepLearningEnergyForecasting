@@ -7,13 +7,13 @@ import optuna
 import warnings
 
 from optuna.integration import PyTorchLightningPruningCallback
-#from pathlib import Path
+from pathlib import Path
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 from src.deep_learning.preprocessing import get_transformer_sequences, SequenceScaler, SequenceDataset
 from src.deep_learning.testing import train_val_split
 from src.deep_learning.transformer import LITransformer
-from src.utils import get_root_dir
+#from src.utils import get_root_dir
 
 
 print("Starting transformer model tuning script...")
@@ -22,14 +22,17 @@ print("Starting transformer model tuning script...")
 def tune_model(cfg: DictConfig) -> None:
 
     print("Getting directories...")
-    work_dir = get_root_dir()
-    #work_dir = Path.cwd()
+    #work_dir = get_root_dir()
+    work_dir = Path.cwd()
     data_dir = work_dir / "data" / "deployment"
-    processed_dir = data_dir / "processed" / "training_data.csv"
     tuning_dir = data_dir / "tuning-logs"
 
+    processed_filename = data_dir / "processed" / "training_data.csv"
+    if (processed_filename.exists()) == False:
+        raise Exception("Training data not found in data/deployment/processed. Run training data update script.")
+
     print("Getting training data...")
-    df = pd.read_csv(processed_dir)
+    df = pd.read_csv(processed_filename)
     df["date"] = pd.to_datetime(df["date"], format = "ISO8601")
     
     print("Getting transformer model & tuning configs...")
@@ -66,7 +69,7 @@ def tune_model(cfg: DictConfig) -> None:
 
     print("Performing train-validation split...")
     train_source, train_target, val_source, val_target = train_val_split(
-        source_sequences, target_sequences, (1-val_size), batch_size
+        source_sequences, target_sequences, (1-val_size)
     )
 
     print("Performing feature scaling...")

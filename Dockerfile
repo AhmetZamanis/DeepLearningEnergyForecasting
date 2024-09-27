@@ -1,7 +1,8 @@
-# Python image
-FROM python:3.12-slim
+# Get CUDA image
+FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
 
-# Install CUDA, or get an image?
+# Install Python
+RUN apt-get update && apt-get install -y python3 python3-pip
 
 # Container working directory
 WORKDIR /app
@@ -22,6 +23,7 @@ RUN mkdir -p /app/data/deployment/predictions
 # If other models (or loadables) are added, split into more subfolders like data 
 RUN mkdir -p /app/models/deployment
 
-# Install src and its dependencies
-RUN pip install --no-cache-dir --upgrade pip \
-  && pip install --no-cache-dir .
+# Install Torch, src & its dependencies
+# Torch is not listed in pyproject.toml dependencies due to unique install
+RUN pip3 install torch==2.2.1 torchvision==0.17.1 torchaudio==2.2.1 --index-url https://download.pytorch.org/whl/cu121 \
+    && pip3 install --no-cache-dir . 
