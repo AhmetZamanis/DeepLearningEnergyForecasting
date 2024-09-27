@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         
-        // Model tuning script, default settings
+        // Model tuning script, default settings, short execution
         {
             "name": "tune_model",
             "type": "debugpy",
@@ -29,16 +29,6 @@
             
         },
 
-        // Model training script, default settings
-        {
-            "name": "train_model",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/scripts/deployment/train_model.py",
-            "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal"
-        },
-
         // Model training script, overridden settings
         {
             "name": "train_model_overridden",
@@ -48,6 +38,17 @@
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "args": "training.model_summary=False training.progress_bar=False"
-        }
+        },
+
+        // Batch prediction script, on CPU
+        {
+            "name": "batch_predict_cpu",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/deployment/batch_predict.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "args": "torch.accelerator='cpu' torch.precision='32-true' torch.matmul_precision='highest'"
+        },
     ]
 }

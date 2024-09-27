@@ -8,7 +8,8 @@ import warnings
 
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
-from pathlib import Path
+#from pathlib import Path
+from joblib import dump
 from src.deep_learning.preprocessing import get_transformer_sequences, SequenceScaler, SequenceDataset
 from src.deep_learning.transformer import LITransformer
 from src.utils import get_root_dir
@@ -123,11 +124,12 @@ def train_model(cfg: DictConfig) -> None:
 
     print("Saving trained transformer model to: /models/deployment/transformer")
     current_date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    model_path = model_dir / "transformer" / f"{current_date }.ckpt"
+    model_path = model_dir / "transformer" / f"{current_date}.ckpt"
     trainer.save_checkpoint(model_path)
 
-    #print("Saving fitted scaler to: /models/deployment/scaler")
-    # Is this necessary? Just retrain a scaler in the prediction script?
+    print("Saving fitted scaler to: /models/deployment/scaler")
+    scaler_path = model_dir / "scaler" / f"{current_date}.joblib"
+    dump(scaler, scaler_path)
 
 if __name__ == "__main__":
     train_model()
