@@ -1,0 +1,51 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        
+        // Model tuning script, default settings, short execution
+        {
+            "name": "tune_model",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/deployment/tune_model.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "args": "tuning.max_epochs=2 tuning.n_trials=2"
+            
+        },
+
+        // Model tuning script, on CPU
+        {
+            "name": "tune_model_cpu",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/deployment/tune_model.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "args": "tuning.max_epochs=2 tuning.n_trials=2 torch.accelerator='cpu' torch.precision='32-true' torch.matmul_precision='highest'"
+            
+        },
+
+        // Model training script, overridden settings
+        {
+            "name": "train_model_overridden",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/deployment/train_model.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "args": "training.model_summary=False training.progress_bar=False"
+        },
+
+        // Batch prediction script, on CPU
+        {
+            "name": "batch_predict_cpu",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/deployment/batch_predict.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "args": "torch.accelerator='cpu' torch.precision='32-true' torch.matmul_precision='highest'"
+        },
+    ]
+}

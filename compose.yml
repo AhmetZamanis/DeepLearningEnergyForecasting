@@ -1,0 +1,25 @@
+services:
+  energy-forecaster:
+    build:
+      context: .
+      
+    # Image name & version tag
+    image: energy-forecaster:v0.0.1
+
+    # Bind mount data, model & config folders to project root folders
+    volumes:
+      - ./data/deployment:/app/data/deployment
+      - ./models/deployment:/app/models/deployment
+      - ./scripts/deployment/configs:/app/scripts/deployment/configs
+    
+    # Enable GPU support. Change according to your NVIDIA GPU ID
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+
+    # Keep container running after "docker compose up", unless stopped
+    command: tail -f /dev/null

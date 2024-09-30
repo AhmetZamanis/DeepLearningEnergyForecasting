@@ -1,9 +1,37 @@
-# Data
-data/*
-!data/.gitkeep
+.vscode/settings.json
+
+# Analysis data & folder structure
+data/analysis/raw/*
+data/analysis/processed/*
+data/analysis/tuning-logs/*
+
+!data/analysis/raw/.gitkeep
+!data/analysis/processed/.gitkeep
+!data/analysis/tuning-logs/.gitkeep
+
+# Deployment data & folder structure
+data/deployment/raw/*
+data/deployment/processed/*
+data/deployment/tuning-logs/*
+data/deployment/predictions/*
+
+!data/deployment/raw/.gitkeep
+!data/deployment/processed/.gitkeep
+!data/deployment/tuning-logs/.gitkeep
+!data/deployment/predictions/.gitkeep
+
+# Deployment models & folder structure
+models/deployment/transformer/*
+models/deployment/scaler/*
+
+!models/deployment/transformer/.gitkeep
+!models/deployment/scaler/.gitkeep
 
 # Lightning logs
 /lightning_logs
+
+# Hydra logs
+/hydra_outputs
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

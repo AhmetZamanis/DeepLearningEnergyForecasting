@@ -3,24 +3,24 @@ import pandas as pd
 import numpy as np
 import torch
 
+from typing import Union
 
-def get_transformer_sequences(df, input_seq_length = 72, output_seq_length = 32, num_features = 8, horizon_start = 0, forecast_t = 16):
+
+def get_transformer_sequences(df: pd.DataFrame, input_seq_length: int = 72, output_seq_length: int = 33, forecast_t: int = 15) -> tuple[list, list]:
     """
     Takes in the consumption training dataset.
     Returns it as a pair of lists: Input & output sequences, each sequence a dataframe.
+    No shifting or lagging, in contrast to the sequencing done in the analysis part. 
+    T = first forecast hour in output sequence.
     """
 
-    # Get shifted dataset, drop last row due to unknown target
-    df_shifted = df.copy()
-    df_shifted["consumption_MWh"] = df_shifted.consumption_MWh.shift(-1)
-    df_shifted = df_shifted.dropna()
-    n_steps = len(df_shifted) 
+    # Find the index of the first row in the data at hour T, where the index is bigger than input_seq_length. This will be the first forecast point.
+    # EXAMPLE: input_seq_length = 72, first T index = 72, [0, 71] = 72 input steps.
+    first_t = df.loc[(df.date.dt.hour == forecast_t) & (df.index >= input_seq_length)].index.values[0]
 
-    # Find the index of the first row in the data at hour T, where the index is bigger than source_length - 1. This will be the first T.
-    first_t = df_shifted.loc[(df_shifted.time.dt.hour == forecast_t) & (df_shifted.index >= input_seq_length - 1)].index.values[0]
-
-    # Find the index of the last row in the data at hour T, with `output_seq_length` time steps after it. This will be the last T.
-    last_t = df_shifted.loc[(df_shifted.time.dt.hour == forecast_t) & (df_shifted.index + output_seq_length - 1 <= df.index.values[-1])].index.values[-2]
+    # Find the index of the last row in the data at hour T, with `output_seq_length` time steps after it. This will be the last forecast point.
+    # EXEAMPLE: output_seq_length = 33, last T index = 72, [72, 104] = 33 output steps.
+    last_t = df.loc[(df.date.dt.hour == forecast_t) & (df.index + output_seq_length - 1 <= df.index.values[-1])].index.values[-1]
 
     # Number of T rows followed by a sufficient length input & output sequence
     n_sequences = (last_t - first_t) // 24 + 1 
@@ -32,21 +32,21 @@ def get_transformer_sequences(df, input_seq_length = 72, output_seq_length = 32,
     # Get sequences
     for t in range(first_t, last_t + 1, 24):
 
-        # Get input sequence
+        # Get input sequence [t-72, t)
         new_input = pd.concat([
-            df_shifted.iloc[(t - input_seq_length):t, 0], # Time
-            df_shifted.iloc[(t - input_seq_length):t, 2], # Past target
-            df_shifted.iloc[(t - input_seq_length):t, 3:] # Past covariates
+            df.iloc[(t - input_seq_length):t, 0], # Time
+            df.iloc[(t - input_seq_length):t, 1], # Past target
+            df.iloc[(t - input_seq_length):t, 2:] # Past covariates
             ], axis = 1)
-        new_input = new_input.set_index("time")
+        new_input = new_input.set_index("date")
     
-        # Get output sequence
+        # Get output sequence [t, t+H) 
         new_output = pd.concat([
-            df_shifted.iloc[t:(t + output_seq_length), 0], # Time 
-            df_shifted.iloc[t:(t + output_seq_length), 1], # Future target
-            df_shifted.iloc[t:(t + output_seq_length), 3:] # Future known covariates
+            df.iloc[t:(t + output_seq_length), 0], # Time 
+            df.iloc[t:(t + output_seq_length), 1], # Future target
+            df.iloc[t:(t + output_seq_length), 2:] # Future known covariates
             ], axis = 1)
-        new_output = new_output.set_index("time")
+        new_output = new_output.set_index("date")
     
         # Concatenate to arrays of sequences
         input_sequences.append(new_input)
@@ -58,16 +58,17 @@ def get_transformer_sequences(df, input_seq_length = 72, output_seq_length = 32,
 class SequenceScaler:
     """
     Takes in 1 pair of lists: Input & output sequences, each sequence a dataframe.
+    Either omit date column or set it to index.
 
     Returns scaled 3D numpy array of shape (observations, timesteps, features).
     Can also backtransform scaled predictions.
     """
 
-    def __init__(self, feature_range = (-1, 1)):
+    def __init__(self, feature_range: tuple[Union[float, int], Union[float, int]] = (-1, 1)):
         self.lower = feature_range[0]
         self.upper = feature_range[1]
 
-    def fit(self, input_df, output_df):
+    def fit(self, input_df: list, output_df: list) -> None:
 
         # Get input & output sequences as 3D arrays
         # The time index will be skipped, yielding shape (N, seq_length, seq_dims)
@@ -96,7 +97,7 @@ class SequenceScaler:
         self.dimensions_mini = dimensions_mini
         self.dimensions_maxi = dimensions_maxi
 
-    def transform(self, scale_df):
+    def transform(self, scale_df: list) -> np.ndarray:
 
         # Get sequence as 3D arrays
         scale_array = np.stack(scale_df, axis = 0)
@@ -116,7 +117,7 @@ class SequenceScaler:
         # Stack over 3rd axis & return
         return np.stack(scaled_dimensions, axis = 2)
 
-    def backtransform_preds(self, preds_array, fitted_preds_dim = 0):
+    def backtransform_preds(self, preds_array: np.ndarray, fitted_preds_dim: int = 0) -> np.ndarray:
 
         # Get n. of predicted quantiles to backtransform
         n_quantiles = preds_array.shape[-1]
@@ -145,7 +146,7 @@ class SequenceDataset(torch.utils.data.Dataset):
     """
 
     # Store preprocessed input & output sequences
-    def __init__(self, input_seq, output_seq): 
+    def __init__(self, input_seq: np.ndarray, output_seq: np.ndarray): 
         self.input_seq = torch.tensor(input_seq, dtype = torch.float32) # Store input sequences
         self.output_seq = torch.tensor(output_seq, dtype = torch.float32) # Store output sequences
   
