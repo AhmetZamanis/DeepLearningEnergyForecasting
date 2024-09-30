@@ -1,5 +1,5 @@
-# ** ignores the pattern in any subdirectory
-# Files in bind mounts are not ignored.
+# ** ignores the pattern in any level subdirectory
+# Files in bind mount directories are not ignored.
 
 **.ipynb_checkpoints
 **__pycache__

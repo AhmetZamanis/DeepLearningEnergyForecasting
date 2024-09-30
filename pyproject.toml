@@ -10,16 +10,15 @@ dependencies = [
 	"optuna==3.5.0",
 	"scikit_learn==1.5.0",
 	"hydra-core==1.3.2",	
-	"numpy==1.26.4",
 	"pandas==2.2.1",
 	"python-dotenv==1.0.1",
-	"requests== 2.31.0"
+	"requests== 2.31.0",
+	"matplotlib==3.8.3",
+	"seaborn==0.13.2"
 ]
 
 [project.optional-dependencies]
 analysis = [
-	"matplotlib==3.8.3",
-	"seaborn==0.13.2",
 	"gpytorch==1.11",
 	"statsmodels==0.14.1",
 	"u8darts==0.27.2"

@@ -1,4 +1,6 @@
-# Analysis data
+.vscode/settings.json
+
+# Analysis data & folder structure
 data/analysis/raw/*
 data/analysis/processed/*
 data/analysis/tuning-logs/*
@@ -7,7 +9,7 @@ data/analysis/tuning-logs/*
 !data/analysis/processed/.gitkeep
 !data/analysis/tuning-logs/.gitkeep
 
-# Deployment data
+# Deployment data & folder structure
 data/deployment/raw/*
 data/deployment/processed/*
 data/deployment/tuning-logs/*
@@ -18,7 +20,7 @@ data/deployment/predictions/*
 !data/deployment/tuning-logs/.gitkeep
 !data/deployment/predictions/.gitkeep
 
-# Deployment models
+# Deployment models & folder structure
 models/deployment/transformer/*
 models/deployment/scaler/*
 
@@ -191,4 +193,3 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
-.vscode/settings.json

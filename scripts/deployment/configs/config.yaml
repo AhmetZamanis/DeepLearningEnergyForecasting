@@ -21,11 +21,12 @@ tuning:
 
 training:
     model_summary: True  # Print Torch model summary
-    progress_bar: True  # Print training progress bar
+    progress_bar: True  # Print Torch training progress bar
 
+# Change these according to your training device
 torch:
-    accelerator: "gpu"  # Change according to your training device
-    precision: "16-mixed"  # Change according to your training device
+    accelerator: "gpu"  
+    precision: "16-mixed"
     matmul_precision: "medium"  # See `torch.set_float32_matmul_precision`
     
 hydra:
