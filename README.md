@@ -6,7 +6,7 @@ I used `torch` and `lightning` to implement a stateful LSTM model, and an invert
 
 I also used `Docker` to containerize and deploy the Transformer model. The resulting Docker image can be used to run deployment scripts that automatically update the data from a public API, tune and train a Transformer model, and perform batch predictions. The usage instructions are below, and implementation details are explained in the deployment scripts' & configuration files' comments.
 
-See `Report.md` for an explanation of the models and analysis, along with sources and acknowledgements. See `notebooks/analysis` for the data prep, EDA and modeling notebooks, and `src` for the source code, including Torch classes.
+See `Report.md` for an explanation of the models and analysis, along with sources and acknowledgements. See `notebooks/analysis` for the data prep, EDA and modeling notebooks, and `src` for the source code, including Torch classes. See `scripts/deployment` for the deployment scripts and configurations.
 
 - I also used this dataset and the `GPyTorch` package to try out Gaussian Process Regression with various training strategies. See `notebooks/analysis` for the notebook.
 - The merged dataset used in the analysis is available on [Kaggle](https://www.kaggle.com/datasets/ahmetzamanis/energy-consumption-and-pricing-trkiye-2018-2023).
@@ -20,14 +20,14 @@ The simplest way to perform deployment locally is by using the `Make` recipes in
 - The inputs, outputs and requirements for every script are in the Makefile comments.
 - If Make is not installed, you can copy-paste and run the commands manually, substituting in the service name.
 
-To pull data from the [EPİAŞ API](https://seffaflik.epias.com.tr/home), you need to create an account and add your credentials to a `.env` file in the project root. The format is in `.env-mock`.
+To pull data from the [EPİAŞ API](https://seffaflik.epias.com.tr/home), you need to create a free account and add your credentials to a `.env` file in the project root. The format is demonstrated in `.env-mock`.
 
-The configurations for the deployment scripts are handled with [Hydra](https://hydra.cc/docs/intro/). The config file is in `scripts/deployment/configs/config.yaml`.
+The configurations for the deployment scripts are handled with [Hydra](https://hydra.cc/docs/intro/). The config file is `scripts/deployment/configs/config.yaml`.
 
 - You can update config.yaml in the project root directory, and the configs in the container will also be updated: The two directories are bind mounted by default.
-- You can also run the script commands manually without Make, and override configs with Hydra syntax.
+- You can also run the deployment script commands manually without Make, and override configs with Hydra syntax.
 
-You can retain, access and modify the model predictions, datasets, tuning logs and saved models outside the container, in the project root directories. The project root and container directories are bind mounted and have the same structure.
+You can retain, access and modify the model predictions, datasets, tuning logs and saved models outside the container, in the data & model directories at the project root. The data and model directories at the project root and in the container are bind mounted and have the same directory structure.
 
 The image is created from an official `CUDA` image. A GPU version of Torch is installed by default. The final image size is around 9GBs. Building the image takes around 7mins on my PC.
 
@@ -35,7 +35,7 @@ The image is created from an official `CUDA` image. A GPU version of Torch is in
   - You may need to modify the relevant fields in `compose.yml` according to the hardware you have.
   - You may need to install additional NVIDIA CUDA tools, depending on your operating system.
     - On Windows, it should be enough to make sure the NVIDIA drivers are installed, and Docker is running with WSL 2. See [the Docker documentation](https://docs.docker.com/desktop/gpu/) for details.
-- You can also modify or override the configs to use your CPU only. In that case, I also suggest modifying the base image and Torch installation in the `Dockerfile`, to avoid an unnecessarily large image.
+- You can also modify or override the configs to use your CPU. This especially makes sense for running the batch prediction script, but tuning and training may be slow. If you won't use a GPU, I suggest modifying the image to use a Python slim base image, and installing a CPU version of Torch. The resulting image should be much smaller and faster to build.
 
 ## Instructions: Editable install for development
 

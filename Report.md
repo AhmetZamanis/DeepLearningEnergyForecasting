@@ -7,7 +7,7 @@ I used PyTorch and Lightning to build and benchmark two multi-horizon forecastin
 This report will go over the problem formulation, the architectures of the models built, and their performance comparisons. We'll also talk about some architectures that inspired this experiment. The code & implementation details can be found in the Jupyter notebooks in `notebooks/analysis`, and in `src`. The Torch classes are available in `src`, but keep in mind the implementations are tailored to this problem & dataset.
 \
 \
-I also used `Docker` to containerize and deploy the Transformer model. The resulting Docker image can be used to run deployment scripts that automatically update the data from a public API, tune and train a Transformer model, and perform batch predictions. See `README.md` for instructions on how to deploy the Docker image. The implementation details are explained in the deployment scripts' & configuration files' comments.
+I also used `Docker` to containerize and deploy the Transformer model. The resulting Docker image can be used to run deployment scripts that automatically update the data from a public API, tune and train a Transformer model, and perform batch predictions. See `README.md` for instructions on how to deploy the Docker image. The implementation details are explained in the deployment scripts' & configuration files' comments. See `scripts/deployment` for the deployment scripts and configurations.
 
 ## Data overview
 
